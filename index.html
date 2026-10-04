@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>任务积分乐园｜虚拟娱乐小游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif;}
+body{background:#000;color:#fff;padding:10px;}
+.tab-container{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.tab-container button{padding:12px;border:none;border-radius:6px;background:#222;color:#fff;font-size:16px;cursor:pointer;}
+.tab-container button.active{background:#0078d4;}
+.page-content{display:none;}
+.page-content.active{display:block;}
+.item-card{background:#1a1a1a;border-radius:8px;padding:14px;margin:10px 0;}
+.item-card button{margin-top:8px;padding:8px 16px;border:none;border-radius:4px;background:#0078d4;color:#fff;cursor:pointer;}
+.order-ship-text{color:#888;margin-top:6px;}
+#adOverlay{position:fixed;inset:0;background:#000;display:none;z-index:9999;flex-direction:column;align-items:center;justify-content:center;}
+#adOverlay.show{display:flex;}
+#vmWrap{position:fixed;inset:0;background:#000;display:none;z-index:9998;overflow:hidden;}
+#vmWrap.show{display:block;}
+/* ===== 虚拟机桌面：壁纸全屏铺满 ===== */
+.vm-fullscreen{
+  position:absolute;inset:0;
+  background-image: url("img0.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow:hidden;
+}
+
+/* ===== 桌面图标：Windows原生桌面排版！从左往右一排摆满自动换行，和截图一样 ===== */
+.vm-desktop{
+  width:100%;
+  height:calc(100% - 48px);
+  padding:18px;
+  display:grid;
+  grid-template-columns: repeat(auto-fill, 96px);
+  gap:18px 12px;
+  align-content: start;
+  justify-content: start;
+}
+.vm-icon{
+  width:96px;
+  padding:8px 4px;
+  text-align:center;
+  cursor:pointer;
+  border-radius:6px;
+  user-select:none;
+}
+.vm-icon:hover{
+  background:rgba(255,255,255,0.12);
+}
+.vm-icon .icon-emoji{
+  font-size:36px;
+  margin-bottom:4px;
+  display:block;
+}
+.vm-icon .icon-text{
+  font-size:12px;
+  color:#fff;
+  text-shadow:0 1px 3px #000;
+  word-break:break-word;
+}
+/* ===== 任务栏：放在底部 ===== */
+.vm-taskbar{
+  position:absolute;
+  bottom:0;left:0;
+  width:100%;
+  height:48px;
+  background:rgba(20,20,20,0.78);
+  backdrop-filter: blur(12px);
+  display:flex;
+  align-items:center;
+  padding:0 12px;
+  gap:10px;
+  z-index:50;
+}
+.vm-back-btn{
+  height:34px;
+  padding:0 12px;
+  border:none;
+  border-radius:6px;
+  background:#2d8cf0;
+  color:#fff;
+  cursor:pointer;
+  font-size:14px;
+}
+.vm-start-btn{
+  height:34px;
+  padding:0 14px;
+  border:none;
+  border-radius:6px;
+  background:#3a3a3a;
+  color:#fff;
+  cursor:pointer;
+  font-size:15px;
+}
+.vm-start-btn:hover{background:#4a4a4a;}
+.vm-start-menu{
+  position:absolute;
+  bottom:54px;
+  left:12px;
+  width:340px;
+  background:rgba(28,28,28,0.92);
+  border:1px solid #555;
+  border-radius:12px;
+  padding:10px;
+  display:none;
+  z-index:60;
+}
+.vm-start-menu.active{display:block;}
+.vm-start-item{
+  padding:9px 12px;
+  color:#fff;
+  border-radius:6px;
+  cursor:pointer;
+}
+.vm-start-item:hover{background:#0078d4;}
+/* ===== 窗口样式 ===== */
+.vm-window{
+  position:absolute;
+  width:480px;
+  height:340px;
+  background:#fff;
+  color:#222;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  border:1px solid #777;
+  display:flex;
+  flex-direction:column;
+}
+.vm-win-header{
+  height:34px;
+  background:#f1f3f5;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 10px;
+  cursor:move;
+  border-bottom:1px solid #ccc;
+}
+.vm-win-ctrl button{
+  width:32px;height:32px;border:none;background:transparent;color:#555;cursor:pointer;font-size:14px;
+}
+.vm-win-ctrl button:hover{background:#e5e5e5;}
+.vm-win-body{
+  flex:1;
+  padding:12px;
+  overflow:auto;
+}
+/* ===== 开机画面 ===== */
+.vm-boot-screen{
+  position:absolute;inset:0;
+  background:#000;
+  z-index:200;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+}
+.boot-progress{
+  width:240px;height:4px;background:#222;
+  margin-top:26px;border-radius:2px;overflow:hidden;
+}
+.boot-progress > div{
+  height:100%;width:0%;
+  background:#0078d4;
+  transition: width 0.14s linear;
+}
+/* ===== 软件内部通用样式 ===== */
+textarea{width:100%;height:100%;border:1px solid #ccc;padding:8px;font-family:inherit;font-size:14px;resize:none;}
+input[type="text"],input[type="password"]{
+  width:100%;padding:7px 8px;border:1px solid #bbb;border-radius:4px;font-size:14px;
+}
+button{
+  padding:7px 14px;border:none;border-radius:5px;background:#0078d4;color:#fff;cursor:pointer;font-size:14px;
+}
+button.gray{background:#666;}
+button.green{background:#22a060;}
+button.red{background:#c0392b;}
+.row{display:flex;gap:8px;margin:8px 0;}
+.row > *{flex:1;}
+.hint{color:#666;font-size:13px;margin-top:6px;}
+ul{padding-left:18px;margin-top:6px;}
+li{margin:4px 0;}
+/* ========== P2P聊天室新增CSS ========== */
+#chatPage{
+  position:fixed;
+  inset:0;
+  background:#111;
+  display:none;
+  z-index:9997;
+  padding:20px;
+  overflow:auto;
+}
+#chatPage.show{
+  display:block;
+}
+#chatBox a{color:#4cf;text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="tab-container">
+<button data-tab="page-task" class="active">任务</button>
+<button data-tab="page-shop">商店</button>
+<button data-tab="page-bag">背包</button>
+<button data-tab="page-coupon">优惠券商店</button>
+</div>
+<div style="padding:14px;font-size:20px;">
+你的积分：<span id="scoreDisplay">0</span>
+</div>
+<div id="page-task" class="page-content active">
+<div class="item-card">
+<h3>📅 七日签到</h3>
+<p>连续签到拿更多积分</p>
+<button id="btn-checkin">执行签到</button>
+</div>
+<div class="item-card">
+<h3>📺 观看广告任务</h3>
+<p>观看20秒广告，获得120积分</p>
+<button id="btn-ad">开始看广告</button>
+</div>
+<div class="item-card">
+<h3>🎮 小游戏任务</h3>
+<p>玩小游戏，获得180积分</p>
+<button id="btn-minigame">打开小游戏</button>
+</div>
+</div>
+<div id="page-shop" class="page-content">
+<div class="item-card">
+<h3>游戏机币 ×100</h3>
+<p>价格：800积分</p>
+<button class="buy-item" data-cost="800" data-name="游戏机币 ×100">兑换</button>
+</div>
+<div class="item-card">
+<h3>金币 ×5000</h3>
+<p>价格：1200积分</p>
+<button class="buy-item" data-cost="1200" data-name="金币 ×5000">兑换</button>
+</div>
+<div class="item-card">
+<h3>虚拟小狗宠物</h3>
+<p>价格：2200积分</p>
+<button class="buy-item" data-cost="2200" data-name="虚拟小狗宠物">兑换</button>
+</div>
+<div class="item-card">
+<h3>我的世界钻石 ×8000000</h3>
+<p>价格：4100积分</p>
+<button class="buy-item" data-cost="4100" data-name="我的世界钻石 ×8000000">兑换</button>
+</div>
+<div class="item-card">
+<h3>Windows 虚拟电脑</h3>
+<p>价格：5200积分</p>
+<button class="buy-item" data-cost="5200" data-name="Windows 虚拟电脑">兑换</button>
+</div>
+<!-- ===== 新增P2P聊天室商品 ===== -->
+<div class="item-card">
+<h3>简易P2P文字聊天室</h3>
+<p>价格：800积分</p>
+<button class="buy-item" data-cost="800" data-name="简易P2P文字聊天室">兑换</button>
+</div>
+</div>
+<div id="page-bag" class="page-content">
+<h2>我的背包</h2>
+<div id="bagList"></div>
+</div>
+<div id="page-coupon" class="page-content">
+<div class="item-card">
+<h3>优惠券 - 抵扣100积分</h3>
+<p>售价：50积分</p>
+<button class="buy-coupon" data-cost="50" data-value="100">购买</button>
+</div>
+<div class="item-card">
+<h3>优惠券 - 抵扣2100积分</h3>
+<p>售价：100积分</p>
+<button class="buy-coupon" data-cost="100" data-value="2100">购买</button>
+</div>
+<div class="item-card">
+<h3>优惠券 - 抵扣5100积分</h3>
+<p>售价：250积分</p>
+<button class="buy-coupon" data-cost="250" data-value="5100">购买</button>
+</div>
+<div style="margin-top:20px;">
+<h3>我已拥有优惠券</h3>
+<div id="couponList"></div>
+</div>
+</div>
+<div id="adOverlay">
+<div id="adTimer">20</div>
+<p style="color:#aaa;margin-top:12px;">广告播放中</p>
+<button id="adCloseBtn" style="display:none;">关闭广告</button>
+</div>
+<div id="vmWrap">
+<div id="vmContent"></div>
+</div>
+<!-- ========== P2P聊天室HTML页面【增加文件选择】 ========== -->
+<div id="chatPage">
+  <h2>P2P文字聊天室（支持文件传输）</h2>
+  <p>邀请码：<span id="chatCode">ABC123</span></p>
+  <input type="text" placeholder="输入好友邀请码" id="inviteInput">
+  <button onclick="connectChat()">连接好友</button>
+  <div id="chatBox" style="margin:15px 0;min-height:200px;background:#222;padding:10px;"></div>
+  <input type="text" id="chatInput" placeholder="输入消息">
+  <button onclick="sendMsg()">发送文字</button>
+  <br><br>
+  <input type="file" id="fileInput">
+  <button onclick="sendFile()">发送选中文件</button>
+  <br><br>
+  <button onclick="closeChat()">关闭聊天室</button>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+let saveData = JSON.parse(localStorage.getItem("gameSave")) || {
+  score: 375,
+  coupons:[],
+  bag:[],
+  orders:[],
+  lastCheckinDate: "",
+  streakDays: 0
+};
+function saveAll(sd){
+  localStorage.setItem("gameSave",JSON.stringify(sd));
+  saveData = sd;
+}
+function refreshAllUi(){
+  document.getElementById("scoreDisplay").innerText = saveData.score;
+  renderBag();
+  renderCouponList();
+}
+function renderBag(){
+  const el = document.getElementById("bagList");
+  el.innerHTML = "";
+  for(let i=0;i<saveData.orders.length;i++){
+    const ord = saveData.orders[i];
+    const now = Date.now();
+    if(now < ord.deliveryEndTime){
+      const remainSec = Math.round((ord.deliveryEndTime-now)/1000);
+      const div = document.createElement("div");
+      div.className = "item-card";
+      div.innerHTML = `<h4>${ord.itemName}</h4><div class="order-ship-text">配送中，剩余${remainSec}秒</div>`;
+      el.appendChild(div);
+    }else{
+      saveData.bag.push(ord.itemName);
+      saveData.orders.splice(i,1);
+      i-=1;
+    }
+  }
+  saveData.bag.forEach(itemName=>{
+    const div = document.createElement("div");
+    div.className = "item-card";
+    if(itemName.trim() === "Windows 虚拟电脑" || itemName.trim() === "Windows虚拟电脑"){
+      div.innerHTML = `<h4>${itemName}</h4><button class="startVmBtn">启动</button>`;
+      div.querySelector(".startVmBtn").onclick = openVm;
+    }else if(itemName.trim() === "简易P2P文字聊天室"){
+      div.innerHTML = `<h4>${itemName}</h4><button class="startChatBtn">启动</button>`;
+      div.querySelector(".startChatBtn").onclick = openChat;
+    }else{
+      div.innerHTML = `<h4>${itemName}</h4>`;
+    }
+    el.appendChild(div);
+  })
+}
+function renderCouponList (){
+  const el = document.getElementById ("couponList");
+  el.innerHTML = "";
+  if (saveData.coupons.length === 0){
+    el.innerText ="暂无优惠券";
+    return;
+  }
+  for (let c of saveData.coupons){
+    const d = document.createElement ("div");
+    d.style.padding="6px 0";
+    d.innerText ="抵扣："+c+" 积分";
+    el.appendChild (d);
+  }
+}
+document.querySelectorAll (".tab-container button").forEach (tabBtn=>{
+  tabBtn.onclick = function (){
+    const targetTab = this.dataset.tab;
+    document.querySelectorAll (".tab-container button").forEach (b=>b.classList.remove ("active"));
+    this.classList.add ("active");
+    document.querySelectorAll (".page-content").forEach (pg=>pg.classList.remove ("active"));
+    document.getElementById (targetTab).classList.add ("active");
+  };
+});
+document.getElementById ("btn-checkin").onclick = function (){
+  const today = new Date ().toDateString ();
+  if (saveData.lastCheckinDate === today){
+    alert ("✅ 你今天已经签过到了！明天再来！");
+    return;
+  }
+  const lastDate = new Date (saveData.lastCheckinDate);
+  const nowDate = new Date ();
+  const diffDay = Math.round ((nowDate - lastDate) / (1000*60*60*24));
+  if (saveData.lastCheckinDate === ""){
+    saveData.streakDays = 1;
+  } else if (diffDay > 1){
+    saveData.streakDays = 1;
+    alert ("❌ 签到中断！连续天数重置，重新开始累计！");
+  } else {
+    saveData.streakDays += 1;
+  }
+  if (saveData.streakDays >7) saveData.streakDays = 1;
+  const rewardMap = { 1:60, 2:90, 3:130, 4:180, 5:240, 6:300, 7:500 };
+  const getReward = rewardMap [saveData.streakDays];
+  saveData.score += getReward;
+  saveData.lastCheckinDate = today;
+  saveAll (saveData);
+  refreshAllUi ();
+  alert (`🎉 签到成功！连续${saveData.streakDays}天，获得${getReward}积分！`);
+};
+document.getElementById ("btn-ad").onclick = function (){
+  const overlay = document.getElementById ("adOverlay");
+  const timerDom = document.getElementById ("adTimer");
+  const closeBtn = document.getElementById ("adCloseBtn");
+  overlay.classList.add ("show");
+  let t =20;
+  timerDom.innerText = t;
+  closeBtn.style.display = "none";
+  const iv = setInterval (()=>{
+    t-=1;
+    timerDom.innerText = t;
+    if (t<=0){
+      clearInterval (iv);
+      closeBtn.style.display = "block";
+    }
+  },1000);
+  closeBtn.onclick = function (){
+    overlay.classList.remove ("show");
+    saveData.score += 120;
+    saveAll (saveData);
+    refreshAllUi ();
+    alert ("广告结束，+120 积分");
+  };
+};
+document.getElementById ("btn-minigame").onclick = function (){
+  alert ("小游戏完成，获取 180 积分！");
+  saveData.score +=180;
+  saveAll (saveData);
+  refreshAllUi ();
+};
+document.querySelectorAll ('.buy-item').forEach (btn=>{
+  btn.onclick = function (){
+    let sd = saveData;
+    const originalCost = Number (this.dataset.cost);
+    const nameItem = this.dataset.name;
+    let finalPrice = originalCost;
+    if (sd.coupons.length > 0) {
+      let pick = prompt ("是否使用优惠券？输入编号: \n0 = 不使用优惠券 \n"+ sd.coupons.map ((v,i)=>`${i+1} = 抵扣${v}积分`).join("\n"));
+      if(pick !== null){
+        let idx = parseInt(pick)-1;
+        if(!isNaN(idx) && idx >=0 && idx < sd.coupons.length){
+          const couponVal = sd.coupons[idx];
+          if(couponVal !== undefined){
+            finalPrice = originalCost - couponVal;
+            if(finalPrice < 0) finalPrice = 0;
+            sd.coupons.splice(idx,1);
+          }
+        }
+      }
+    }
+    if(finalPrice < 0) finalPrice = 0;
+    if(sd.score >= finalPrice){
+      sd.score = sd.score - finalPrice;
+      const orderItem = {
+        itemName: nameItem,
+        deliveryEndTime: Date.now() + (10*60*1000)
+      };
+      sd.orders.push (orderItem);
+      saveAll (sd);
+      refreshAllUi ();
+      alert ("下单成功！商品将在约 10 分钟后送到背包！");
+    } else {
+      alert ("积分不足！需要："+finalPrice + "，你当前积分："+sd.score);
+    }
+  };
+});
+document.querySelectorAll ('.buy-coupon').forEach (btn=>{
+  btn.onclick = function (){
+    let sd = saveData;
+    const costC = Number (this.dataset.cost);
+    const valueC = Number (this.dataset.value);
+    if (sd.score >= costC){
+      sd.score -= costC;
+      sd.coupons.push (valueC);
+      saveAll (sd);
+      refreshAllUi ();
+      alert ("优惠券购买成功！");
+    } else {
+      alert ("积分不够，无法购买该优惠券！");
+    }
+  };
+});
+/* =========================================================
+   虚拟机核心
+   ========================================================= */
+// 虚拟机管理器数据：支持新建、导入磁盘、启动、关机
+let vmManagerData = {
+  vms: [
+    { name: "Windows10 虚拟机", state: "关机", disk: null },
+    { name: "Windows11 虚拟机", state: "关机", disk: null }
+  ],
+  disks: [] // 已导入的虚拟磁盘
+};
+function openVm (){
+  const vmWrap = document.getElementById ("vmWrap");
+  const vmContent = document.getElementById ("vmContent");
+  vmWrap.classList.add("show");
+  vmWrap.style.display = "block";
+  vmContent.innerHTML = `
+    <div class="vm-boot-screen">
+      <div style="font-size:46px;">🪟 Windows 11</div>
+      <div style="margin-top:12px;color:#9ad1ff;">正在启动，请稍候...</div>
+      <div class="boot-progress"><div id="bootBar"></div></div>
+    </div>
+  `;
+  let bootPct = 0;
+  const bootTimer = setInterval(()=>{
+    bootPct += Math.random()*5;
+    if(bootPct >= 100) bootPct = 100;
+    document.getElementById("bootBar").style.width = bootPct+"%";
+    if(bootPct >= 100){
+      clearInterval(bootTimer);
+      loadDesktop();
+    }
+  },120);
+}
+function loadDesktop(){
+  const vmContent = document.getElementById ("vmContent");
+  const appList = [
+    {id:"notepad",name:"记事本",icon:"📄"},
+    {id:"browser",name:"浏览器",icon:"🌐"},
+    {id:"rdp",name:"远程桌面",icon:"🖥️"},
+    {id:"explorer",name:"文件资源管理器",icon:"📁"},
+    {id:"recycle",name:"回收站",icon:"🗑️"},
+    {id:"calc",name:"计算器",icon:"🔢"},
+    {id:"taskmgr",name:"任务管理器",icon:"📊"},
+    {id:"shortcut",name:"Windows快捷键",icon:"⌨️"},
+    {id:"vmmanager",name:"虚拟机管理器",icon:"💻"}
+  ];
+  let desktopIconsHtml = "";
+  let startMenuHtml = "";
+  appList.forEach(app=>{
+    desktopIconsHtml += `
+      <div class="vm-icon" data-app="${app.id}">
+        <span class="icon-emoji">${app.icon}</span>
+        <span class="icon-text">${app.name}</span>
+      </div>
+    `;
+    startMenuHtml += `<div class="vm-start-item" data-app="${app.id}">${app.icon} ${app.name}</div>`;
+  });
+  vmContent.innerHTML = `
+    <div class="vm-fullscreen">
+      <div class="vm-desktop">
+        ${desktopIconsHtml}
+      </div>
+      <div class="vm-taskbar">
+        <button class="vm-back-btn" id="vmBackBtn">返回背包</button>
+        <button class="vm-start-btn" id="vmStartBtn">🪟 开始</button>
+        <div class="vm-start-menu" id="vmStartMenu">
+          ${startMenuHtml}
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("vmBackBtn").onclick = function (){
+    const vmWrap = document.getElementById ("vmWrap");
+    vmWrap.classList.remove("show");
+    vmWrap.style.display = "none";
+  };
+  const startBtn = document.getElementById("vmStartBtn");
+  const startMenu = document.getElementById("vmStartMenu");
+  startBtn.onclick = ()=> startMenu.classList.toggle("active");
+  vmContent.querySelectorAll(".vm-icon, .vm-start-item").forEach(el=>{
+    el.ondblclick = el.onclick = ()=>{
+      startMenu.classList.remove("active");
+      createVmWindow(el.dataset.app);
+    };
+  });
+}
+function createVmWindow(appId){
+  let winTitle, winBodyHtml;
+  switch(appId){
+    case "notepad":
+      winTitle = "记事本";
+      winBodyHtml = `
+        <textarea id="noteText" placeholder="在这里输入文字..."></textarea>
+      `;
+      break;
+    case "browser":
+      winTitle = "浏览器";
+      winBodyHtml = `
+        <div class="row">
+          <input id="browserUrl" placeholder="输入网址，例如：https://www.bing.com" />
+          <button id="browserGo">访问</button>
+        </div>
+        <div id="browserView" style="background:#f6f6f6;border:1px solid #ddd;padding:10px;height:240px;overflow:auto;">
+          地址栏输入网址后点击“访问”。
+        </div>
+      `;
+      break;
+    case "rdp":
+      winTitle = "远程桌面连接";
+      winBodyHtml = `
+        <p>计算机地址：</p>
+        <input id="rdpIp" placeholder="例如：192.168.1.100" />
+        <p style="margin-top:8px;">用户名：</p>
+        <input id="rdpUser" placeholder="管理员" />
+        <p style="margin-top:8px;">密码：</p>
+        <input id="rdpPwd" type="password" placeholder="输入密码" />
+        <div class="row" style="margin-top:12px;">
+          <button id="rdpConnect">连接</button>
+          <button id="rdpDisconnect" class="gray">断开</button>
+        </div>
+        <div id="rdpStatus" class="hint">尚未连接。</div>
+      `;
+      break;
+    case "explorer":
+      winTitle = "文件资源管理器";
+      winBodyHtml = `
+        <h3>此电脑</h3>
+        <ul>
+          <li>💾 C盘（系统盘）</li>
+          <li>💿 D盘（资料盘）</li>
+          <li>📄 文档</li>
+          <li>🖼️ 图片</li>
+          <li>⬇️ 下载</li>
+          <li>🎵 音乐</li>
+          <li>🖥️ 桌面</li>
+        </ul>
+      `;
+      break;
+    case "recycle":
+      winTitle = "回收站";
+      winBodyHtml = `<p>回收站是空的。</p>`;
+      break;
+    case "calc":
+      winTitle = "计算器";
+      winBodyHtml = `
+        <input id="calcInput" style="width:100%;padding:8px;font-size:22px;text-align:right;border:1px solid #bbb;border-radius:4px;" value="0" />
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;">
+          <button>7</button><button>8</button><button>9</button><button>/</button>
+          <button>4</button><button>5</button><button>6</button><button>*</button>
+          <button>1</button><button>2</button><button>3</button><button>-</button>
+          <button>0</button><button>.</button><button>C</button><button>+</button>
+          <button style="grid-column:span 4;">=</button>
+        </div>
+      `;
+      break;
+    case "taskmgr":
+      winTitle = "任务管理器";
+      winBodyHtml = `
+        <h3>进程列表</h3>
+        <ul>
+          <li>explorer.exe</li>
+          <li>notepad.exe</li>
+          <li>browser.exe</li>
+          <li>vmms.exe（虚拟机管理服务）</li>
+        </ul>
+        <h3 style="margin-top:12px;">性能</h3>
+        <p>CPU: 18%</p>
+        <p>内存: 6.2 GB / 16 GB</p>
+        <p>磁盘: 读取 42 MB/s，写入 18 MB/s</p>
+      `;
+      break;
+    case "shortcut":
+      winTitle = "Windows快捷键";
+      winBodyHtml = `
+        <ul>
+          <li>Win + D：显示桌面</li>
+          <li>Win + E：打开文件资源管理器</li>
+          <li>Win + R：打开运行</li>
+          <li>Alt + Tab：切换窗口</li>
+          <li>Ctrl + C：复制</li>
+          <li>Ctrl + V：粘贴</li>
+          <li>Ctrl + X：剪切</li>
+          <li>Ctrl + Z：撤销</li>
+        </ul>
+      `;
+      break;
+    case "vmmanager":
+      winTitle = "虚拟机管理器";
+      winBodyHtml = buildVmManagerHtml();
+      break;
+  }
+  const winDiv = document.createElement("div");
+  winDiv.className = "vm-window";
+  winDiv.style.left = (60 + Math.random()*120) + "px";
+  winDiv.style.top = (40 + Math.random()*60) + "px";
+  winDiv.innerHTML = `
+    <div class="vm-win-header">
+      <span>${winTitle}</span>
+      <div class="vm-win-ctrl">
+        <button class="win-min">_</button>
+        <button class="win-close">✕</button>
+      </div>
+    </div>
+    <div class="vm-win-body">${winBodyHtml}</div>
+  `;
+  document.querySelector("#vmContent .vm-fullscreen").appendChild(winDiv);
+  winDiv.querySelector(".win-close").onclick = ()=> winDiv.remove();
+  winDiv.querySelector(".win-min").onclick = ()=> winDiv.style.display = "none";
+  const header = winDiv.querySelector(".vm-win-header");
+  let drag = false, offsetX = 0, offsetY = 0;
+  header.onmousedown = function(e){
+    drag = true;
+    const rect = winDiv.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    function move(ev){
+      if(!drag) return;
+      winDiv.style.left = (ev.clientX - offsetX) + "px";
+      winDiv.style.top = (ev.clientY - offsetY) + "px";
+    }
+    function up(){
+      drag = false;
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+    }
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  };
+  bindAppEvents(appId, winDiv);
+}
+/* ===== 各软件真正可交互逻辑 ===== */
+function bindAppEvents(appId, winDiv){
+  if(appId === "calc"){
+    const input = winDiv.querySelector("#calcInput");
+    winDiv.querySelectorAll(".vm-win-body button").forEach(btn=>{
+      btn.onclick = function(){
+        const txt = this.innerText;
+        if(txt === "C"){
+          input.value = "0";
+        }else if(txt === "="){
+          try{
+            input.value = eval(input.value);
+          }catch(e){
+            input.value = "错误";
+          }
+        }else{
+          if(input.value === "0") input.value = "";
+          input.value += txt;
+        }
+      };
+    });
+  }
+  if(appId === "browser"){
+    winDiv.querySelector("#browserGo").onclick = function(){
+      const url = winDiv.querySelector("#browserUrl").value || "未输入网址";
+      const view = winDiv.querySelector("#browserView");
+      view.innerHTML = `
+        <div style="color:#0078d4;font-weight:bold;">正在访问：${url}</div>
+        <div style="margin-top:10px;color:#444;">
+          <p>✅ 网络连接成功</p>
+          <p>✅ 已建立安全连接</p>
+          <p>✅ 页面加载完成</p>
+          <div style="margin-top:12px;padding:10px;background:#fff;border:1px solid #ddd;border-radius:6px;">
+            <h4>模拟网页首页</h4>
+            <p>搜索框：<input placeholder="输入搜索内容" style="width:100%;padding:6px;border:1px solid #bbb;border-radius:4px;"></p>
+            <p style="margin-top:8px;">导航：新闻｜视频｜图片｜贴吧｜小说</p>
+          </div>
+        </div>
+      `;
+    };
+  }
+  if(appId === "rdp"){
+    winDiv.querySelector("#rdpConnect").onclick = function(){
+      const ip = winDiv.querySelector("#rdpIp").value || "未填写地址";
+      const user = winDiv.querySelector("#rdpUser").value || "未填写用户名";
+      winDiv.querySelector("#rdpStatus").innerHTML =
+        `正在连接 ${ip} ...<br>用户名：${user}<br>✅ 远程会话已建立。`;
+    };
+    winDiv.querySelector("#rdpDisconnect").onclick = function(){
+      winDiv.querySelector("#rdpStatus").innerText = "已断开连接。";
+    };
+  }
+  if(appId === "vmmanager"){
+    bindVmManagerEvents(winDiv);
+  }
+}
+/* ===== 虚拟机管理器：真正可用 ===== */
+function buildVmManagerHtml(){
+  let disksHtml = "<p>暂无导入的虚拟磁盘。</p>";
+  if(vmManagerData.disks.length > 0){
+    disksHtml = "<ul>";
+    vmManagerData.disks.forEach((d,i)=>{
+      disksHtml += `<li>${d.name}  <button class="gray" data-del-disk="${i}">删除</button></li>`;
+    });
+    disksHtml += "</ul>";
+  }
+  let vmsHtml = "<ul>";
+  vmManagerData.vms.forEach((v,i)=>{
+    const diskText = v.disk ? `已挂载：${v.disk}` : "未挂载磁盘";
+    const stateColor = v.state === "运行中" ? "#22a060" : "#c0392b";
+    const btn = v.state === "关机"
+      ? `<button class="green" data-start-vm="${i}">启动</button>`
+      : `<button class="red" data-stop-vm="${i}">关机</button>`;
+    vmsHtml += `
+      <li>
+        <strong>${v.name}</strong>
+        <span style="color:${stateColor};">[${v.state}]</span>
+        <br>
+        <span class="hint">${diskText}</span>
+        <br>
+        ${btn}
+        <button class="gray" data-attach-disk="${i}">挂载磁盘</button>
+        <button class="gray" data-del-vm="${i}">删除</button>
+      </li>
+    `;
+  });
+  vmsHtml += "</ul>";
+  return `
+    <h3>虚拟机列表</h3>
+    ${vmsHtml}
+    <h3 style="margin-top:14px;">虚拟磁盘</h3>
+    ${disksHtml}
+    <div class="row" style="margin-top:14px;">
+      <button id="newVmBtn">新建虚拟机</button>
+      <button id="importDiskBtn">导入虚拟磁盘</button>
+    </div>
+    <div id="vmManagerLog" class="hint" style="margin-top:10px;">
+      提示：选择虚拟机后可启动、关机或挂载磁盘。
+    </div>
+  `;
+}
+function bindVmManagerEvents(winDiv){
+  const log = winDiv.querySelector("#vmManagerLog");
+  winDiv.querySelectorAll("[data-start-vm]").forEach(btn=>{
+    btn.onclick = function(){
+      const i = Number(this.dataset.startVm);
+      vmManagerData.vms[i].state = "运行中";
+      log.innerHTML = `✅ ${vmManagerData.vms[i].name} 已启动。`;
+      refreshVmManagerWindow(winDiv);
+    };
+  });
+  winDiv.querySelectorAll("[data-stop-vm]").forEach(btn=>{
+    btn.onclick = function(){
+      const i = Number(this.dataset.stopVm);
+      vmManagerData.vms[i].state = "关机";
+      log.innerHTML = `⏻ ${vmManagerData.vms[i].name} 已关机。`;
+      refreshVmManagerWindow(winDiv);
+    };
+  });
+  winDiv.querySelectorAll("[data-del-vm]").forEach(btn=>{
+    btn.onclick = function(){
+      const i = Number(this.dataset.delVm);
+      const name = vmManagerData.vms[i].name;
+      vmManagerData.vms.splice(i,1);
+      log.innerHTML = `🗑️ 已删除虚拟机：${name}`;
+      refreshVmManagerWindow(winDiv);
+    };
+  });
+  winDiv.querySelectorAll("[data-attach-disk]").forEach(btn=>{
+    btn.onclick = function(){
+      const i = Number(this.dataset.attachDisk);
+      if(vmManagerData.disks.length === 0){
+        log.innerText = "没有可用磁盘，请先导入虚拟磁盘。";
+        return;
+      }
+      const diskName = vmManagerData.disks[0].name;
+      vmManagerData.vms[i].disk = diskName;
+      log.innerHTML = `已为 ${vmManagerData.vms[i].name} 挂载磁盘：${diskName}`;
+      refreshVmManagerWindow(winDiv);
+    };
+  });
+  winDiv.querySelectorAll("[data-del-disk]").forEach(btn=>{
+    btn.onclick = function(){
+      const i = Number(this.dataset.delDisk);
+      const name = vmManagerData.disks[i].name;
+      vmManagerData.disks.splice(i,1);
+      log.innerHTML = `🗑️ 已删除磁盘：${name}`;
+      refreshVmManagerWindow(winDiv);
+    };
+  });
+  winDiv.querySelector("#newVmBtn").onclick = function(){
+    const name = prompt("请输入虚拟机名称：", "新虚拟机 " + (vmManagerData.vms.length + 1));
+    if(name){
+      vmManagerData.vms.push({ name: name, state: "关机", disk: null });
+      log.innerHTML = `✅ 已新建虚拟机：${name}`;
+      refreshVmManagerWindow(winDiv);
+    }
+  };
+  winDiv.querySelector("#importDiskBtn").onclick = function(){
+    const name = prompt("请输入虚拟磁盘文件名（模拟导入）：", "disk_" + (vmManagerData.disks.length + 1) + ".vhdx");
+    if(name){
+      vmManagerData.disks.push({ name: name });
+      log.innerHTML = `✅ 已导入虚拟磁盘：${name}`;
+      refreshVmManagerWindow(winDiv);
+    }
+  };
+}
+function refreshVmManagerWindow(winDiv){
+  const body = winDiv.querySelector(".vm-win-body");
+  body.innerHTML = buildVmManagerHtml();
+  bindVmManagerEvents(winDiv);
+}
+// ========== P2P聊天室JS【升级：WebRTC 带文件传输】 ==========
+let peerConn;
+let dataChannel;
+const chunkSize = 16*1024; // 分块大小 16KB
+
+function openChat(){
+  document.getElementById("chatPage").classList.add("show");
+}
+function closeChat(){
+  document.getElementById("chatPage").classList.remove("show");
+}
+async function connectChat(){
+  const code = document.getElementById("inviteInput").value.trim();
+  if(!code) return alert("请输入邀请码");
+  document.getElementById("chatCode").innerText = code;
+
+  peerConn = new RTCPeerConnection({
+    iceServers: [ { urls: "stun:stun.l.google.com:19302" } ]
+  });
+  dataChannel = peerConn.createDataChannel("chatFile");
+  bindChannel();
+
+  peerConn.ondatachannel = e => {
+    dataChannel = e.channel;
+    bindChannel();
+  };
+
+  const offer = await peerConn.createOffer();
+  await peerConn.setLocalDescription(offer);
+  addChatLine(`系统：创建房间，邀请码：${code}，等待对方接入`);
+
+  peerConn.onicecandidate = async e => {
+    if(!e.candidate) return;
+    // 这里简化：实际项目需要信令服务器交换offer/candidate
+    addChatLine("⚠️ 提示：WebRTC需要信令交换，当前简易版本仅本地演示，跨设备联机需要信令服务；文件发送逻辑已写好，连通后可用");
+  };
+}
+
+function bindChannel(){
+  dataChannel.onopen = ()=> addChatLine("✅ P2P连接成功，可以发文字和文件");
+  dataChannel.onclose = ()=> addChatLine("❌ 连接断开");
+  dataChannel.onmessage = async e => {
+    const msg = JSON.parse(e.data);
+    if(msg.type === "text"){
+      addChatLine(`对方：${msg.content}`);
+    }else if(msg.type === "fileStart"){
+      window.receiveFile = {
+        name: msg.name,
+        type: msg.mime,
+        size: msg.size,
+        buffer: []
+      };
+      addChatLine(`对方发送文件：${msg.name}，大小${msg.size}字节，接收中...`);
+    }else if(msg.type === "fileChunk"){
+      window.receiveFile.buffer.push(msg.data);
+    }else if(msg.type === "fileEnd"){
+      const blob = new Blob(window.receiveFile.buffer, {type:window.receiveFile.type});
+      const url = URL.createObjectURL(blob);
+      addChatLine(`✅ 文件接收完成：<a href="${url}" download="${window.receiveFile.name}">点击下载 ${window.receiveFile.name}</a>`);
+      window.receiveFile = null;
+    }
+  };
+}
+
+function sendMsg(){
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if(!text || !dataChannel || dataChannel.readyState !== "open"){
+    alert("没有建立P2P连接！");
+    return;
+  }
+  dataChannel.send(JSON.stringify({type:"text", content:text}));
+  addChatLine(`我：${text}`);
+  input.value = "";
+}
+
+async function sendFile(){
+  const fileInput = document.getElementById("fileInput");
+  const file = fileInput.files[0];
+  if(!file) return alert("请先选择文件");
+  if(!dataChannel || dataChannel.readyState !== "open") return alert("P2P未连接");
+
+  addChatLine(`我：正在发送文件 ${file.name}`);
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    const buf = reader.result;
+    dataChannel.send(JSON.stringify({
+      type:"fileStart",
+      name: file.name,
+      mime: file.type,
+      size: file.size
+    }));
+    // 分块发送
+    for(let offset=0; offset<buf.byteLength; offset += chunkSize){
+      const slice = buf.slice(offset, offset+chunkSize);
+      const arr = Array.from(new Uint8Array(slice));
+      dataChannel.send(JSON.stringify({type:"fileChunk", data:arr}));
+    }
+    dataChannel.send(JSON.stringify({type:"fileEnd"}));
+    addChatLine(`我：文件 ${file.name} 发送完毕`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function addChatLine(html){
+  const box = document.getElementById("chatBox");
+  box.innerHTML += `<div>${html}</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+refreshAllUi();
+});
+</script>
+</body>
+</html>
